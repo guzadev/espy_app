@@ -3,10 +3,13 @@ import { ToggleSwitch } from '@/components/ui/toggle-switch';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Separator } from '@/components/ui/separator';
 import { Button } from '@/components/ui/button';
-import { Sun, Volume2, RotateCcw, Sparkles, Square, Moon, Clock } from 'lucide-react';
+import { Sun, Volume2, RotateCcw, Sparkles, Square, Moon, Clock, RefreshCw, CheckCircle2, ArrowUpCircle, ChevronDown, ChevronUp } from 'lucide-react';
 import { useTodo } from '@/contexts/TodoContext';
 import { updateSettings } from '@/utils/storage';
 import { useDarkMode } from '@/contexts/DarkModeContext';
+import { getVersion } from '@tauri-apps/api/app';
+import { check, type Update } from '@tauri-apps/plugin-updater';
+import { invoke } from '@tauri-apps/api/core';
 
 interface SettingsPageProps {
   onPageChange?: (page: 'dashboard' | 'tasks' | 'reminders' | 'events' | 'notifications' | 'pomodoro' | 'notes' | 'activity' | 'timetracking' | 'settings' | 'espy' | 'schedule') => void;
@@ -24,6 +27,51 @@ const SettingsPage: React.FC<SettingsPageProps> = ({ onPageChange, theme = 'clea
   );
   const [workDuration, setWorkDuration] = React.useState(userData.settings.workDuration || 25);
   const [shortBreakDuration, setShortBreakDuration] = React.useState(userData.settings.shortBreakDuration || 5);
+
+  // Updates state
+  const [currentVersion, setCurrentVersion] = React.useState<string>('');
+  const [availableUpdate, setAvailableUpdate] = React.useState<Update | null>(null);
+  const [updateChecked, setUpdateChecked] = React.useState(false);
+  const [checkingUpdate, setCheckingUpdate] = React.useState(false);
+  const [installing, setInstalling] = React.useState(false);
+  const [installProgress, setInstallProgress] = React.useState(0);
+  const [showUpdateNotes, setShowUpdateNotes] = React.useState(false);
+
+  React.useEffect(() => {
+    getVersion().then(setCurrentVersion).catch(() => {});
+  }, []);
+
+  const handleCheckUpdates = async () => {
+    setCheckingUpdate(true);
+    setUpdateChecked(false);
+    try {
+      const u = await check();
+      setAvailableUpdate(u);
+      setUpdateChecked(true);
+      if (u) {
+        localStorage.removeItem('espy_dismissed_update_version');
+      }
+    } catch {
+      setUpdateChecked(true);
+    } finally {
+      setCheckingUpdate(false);
+    }
+  };
+
+  const handleInstallFromSettings = async () => {
+    if (!availableUpdate) return;
+    setInstalling(true);
+    let downloaded = 0;
+    let total = 0;
+    await availableUpdate.downloadAndInstall((event) => {
+      if (event.event === 'Started') total = event.data.contentLength ?? 0;
+      else if (event.event === 'Progress') {
+        downloaded += event.data.chunkLength;
+        if (total > 0) setInstallProgress(Math.round((downloaded / total) * 100));
+      }
+    });
+    await invoke('restart_app');
+  };
 
   const handlePomodoroSoundChange = (enabled: boolean) => {
     setPomodoroSound(enabled);
@@ -386,6 +434,115 @@ const SettingsPage: React.FC<SettingsPageProps> = ({ onPageChange, theme = 'clea
                   </div>
                 </div>
               </div>
+            </CardContent>
+          </Card>
+
+          {/* Updates Section */}
+          <Card className={
+            theme === 'retro'
+              ? "bg-[#e8f5e9]/30 dark:bg-[#4caf50]/10 border-2 border-black dark:border-white rounded-2xl shadow-[4px_4px_0_0_rgba(0,0,0,0.3)] dark:shadow-[4px_4px_0_0_rgba(255,255,255,0.1)]"
+              : ""
+          }>
+            <CardHeader>
+              <CardTitle className={theme === 'retro' ? "flex items-center gap-2 font-bold text-foreground" : "flex items-center gap-2"}>
+                <ArrowUpCircle className="h-5 w-5" />
+                Updates
+              </CardTitle>
+              <CardDescription className={theme === 'retro' ? "text-muted-foreground font-medium" : ""}>
+                Keep Espy up to date
+              </CardDescription>
+            </CardHeader>
+            <CardContent className="space-y-4">
+              {/* Current version */}
+              <div className="flex items-center justify-between">
+                <div className="space-y-0.5">
+                  <p className={theme === 'retro' ? "text-base font-bold" : "text-sm font-medium"}>
+                    Installed version
+                  </p>
+                  <p className={theme === 'retro' ? "text-sm text-muted-foreground font-medium" : "text-sm text-muted-foreground"}>
+                    {currentVersion ? `v${currentVersion}` : 'Loading...'}
+                  </p>
+                </div>
+                <Button
+                  variant="outline"
+                  size={theme === 'retro' ? 'default' : 'sm'}
+                  onClick={handleCheckUpdates}
+                  disabled={checkingUpdate || installing}
+                  className={theme === 'retro' ? "font-bold border-2 shadow-[2px_2px_0_0_rgba(0,0,0,0.3)] dark:shadow-[2px_2px_0_0_rgba(255,255,255,0.1)]" : ""}
+                >
+                  <RefreshCw className={`h-4 w-4 mr-2 ${checkingUpdate ? 'animate-spin' : ''}`} />
+                  {checkingUpdate ? 'Checking...' : 'Check for updates'}
+                </Button>
+              </div>
+
+              {/* Result after checking */}
+              {updateChecked && (
+                <>
+                  <Separator />
+                  {availableUpdate ? (
+                    <div className="space-y-3">
+                      <div className="flex items-center justify-between">
+                        <div>
+                          <p className={theme === 'retro' ? "text-base font-bold text-primary" : "text-sm font-semibold text-primary"}>
+                            v{availableUpdate.version} available
+                          </p>
+                          <p className={theme === 'retro' ? "text-xs text-muted-foreground font-medium" : "text-xs text-muted-foreground"}>
+                            You have v{currentVersion} installed
+                          </p>
+                        </div>
+                        {!installing && (
+                          <Button
+                            size={theme === 'retro' ? 'default' : 'sm'}
+                            onClick={handleInstallFromSettings}
+                            className={theme === 'retro' ? "font-bold" : ""}
+                          >
+                            Install now
+                          </Button>
+                        )}
+                      </div>
+
+                      {installing && (
+                        <div className="space-y-1">
+                          <div className="flex justify-between text-xs text-muted-foreground">
+                            <span>{installProgress < 100 ? 'Downloading...' : 'Installing...'}</span>
+                            <span>{installProgress}%</span>
+                          </div>
+                          <div className="h-1.5 w-full bg-muted rounded-full overflow-hidden">
+                            <div
+                              className="h-full bg-primary transition-all duration-200 rounded-full"
+                              style={{ width: `${installProgress}%` }}
+                            />
+                          </div>
+                        </div>
+                      )}
+
+                      {availableUpdate.body && (
+                        <div className="rounded-md border bg-muted/40 overflow-hidden">
+                          <button
+                            onClick={() => setShowUpdateNotes((s) => !s)}
+                            className="w-full flex items-center justify-between px-3 py-2 text-xs font-medium hover:bg-muted/60 transition-colors"
+                          >
+                            What's new in v{availableUpdate.version}
+                            {showUpdateNotes ? <ChevronUp className="h-3 w-3" /> : <ChevronDown className="h-3 w-3" />}
+                          </button>
+                          {showUpdateNotes && (
+                            <div className="px-3 pb-3 text-xs text-muted-foreground whitespace-pre-wrap leading-relaxed border-t">
+                              {availableUpdate.body}
+                            </div>
+                          )}
+                        </div>
+                      )}
+                    </div>
+                  ) : (
+                    <div className="flex items-center gap-2 text-sm text-muted-foreground">
+                      <CheckCircle2 className="h-4 w-4 text-green-500 shrink-0" />
+                      <span>
+                        You're on the latest version{currentVersion ? ` (v${currentVersion})` : ''}.
+                      </span>
+                    </div>
+                  )}
+                </>
+              )}
             </CardContent>
           </Card>
 

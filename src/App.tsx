@@ -27,6 +27,7 @@ import NotesPage from "@/components/NotesPage"
 import EspyPage from "@/components/EspyPage"
 import SchedulePage from "@/components/SchedulePage"
 import OnboardingModal from "@/components/OnboardingModal"
+import UpdateBanner from "@/components/UpdateBanner"
 import { updateSettings } from "@/utils/storage"
 
 const ONBOARDING_STORAGE_KEY = 'espy_onboarding_completed';
@@ -99,6 +100,7 @@ function AppContent() {
 
   return (
     <>
+      <UpdateBanner />
       <OnboardingModal
         isOpen={showOnboarding}
         onComplete={handleOnboardingComplete}

@@ -167,12 +167,12 @@ const CategorySidebar: React.FC<CategorySidebarProps> = ({
           onClick={() => onPageChange('activity')}
         >
           <div className="flex items-center gap-2 flex-1">
-            <div className="w-8 h-8 rounded-lg bg-blue-600 flex items-center justify-center text-white font-bold text-sm">
-              T
+            <div className="w-8 h-8 rounded-lg overflow-hidden flex items-center justify-center">
+              <img src="/app-icon.png" alt="Espy" className="w-8 h-8 object-contain" />
             </div>
             <div className="flex-1">
               <div className="font-semibold text-sm">Espy</div>
-              <div className="text-xs text-muted-foreground">Your AI Assistant</div>
+              <div className="text-xs text-muted-foreground">Your personal assistant</div>
               <div className="text-xs text-muted-foreground mt-1 flex items-center gap-2">
                 <span>{activityStats?.totalPomodoros || 0} 🍅</span>
               </div>

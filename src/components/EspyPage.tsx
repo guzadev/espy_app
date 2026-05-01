@@ -99,6 +99,15 @@ interface EspyPageProps {
   theme?: 'clean' | 'retro';
 }
 
+const FACES = [
+  { anim: 'startup', label: 'Startup',        desc: 'Startup animation' },
+  { anim: 'idle',    label: 'Idle',           desc: 'No active session' },
+  { anim: 'focus',   label: 'Focus',          desc: 'Pomodoro running' },
+  { anim: 'break',   label: 'Break',          desc: 'Rest time' },
+  { anim: 'love',    label: 'Love',           desc: 'Task completed' },
+  { anim: 'paused',  label: 'Angry / Paused', desc: 'Pomodoro paused' },
+];
+
 const EspyPage: React.FC<EspyPageProps> = ({ theme = 'clean' }) => {
   const {
     isConnected,
@@ -245,6 +254,32 @@ const EspyPage: React.FC<EspyPageProps> = ({ theme = 'clean' }) => {
       setServoAngle(angle);
     } catch (e) {
       console.error('Failed to send servo position:', e);
+    }
+  };
+
+  // Send face directly bypassing Pomodoro sync (for testing only)
+  // After 4 seconds, restores the correct animation based on current Pomodoro state
+  const sendFaceTest = async (anim: string) => {
+    if (!isConnected) return;
+    const post = (animation: string) =>
+      fetch(`http://${customIP}/api/animation`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ animation, task: '' }),
+        signal: AbortSignal.timeout(3000),
+      }).catch(() => {});
+
+    await post(anim);
+
+    // Love and startup return to idle automatically from firmware, restore the rest manually
+    if (anim !== 'love' && anim !== 'startup') {
+      setTimeout(() => {
+        // Restore correct animation based on current Pomodoro state
+        sendAnimation(activityState === 'focus' ? 'focus'
+          : activityState === 'break'           ? 'break'
+          : activityState === 'paused'          ? 'paused'
+          : 'idle');
+      }, 4000);
     }
   };
 
@@ -410,13 +445,40 @@ const EspyPage: React.FC<EspyPageProps> = ({ theme = 'clean' }) => {
           </Card>
         )}
 
-        {/* Servo Simulation */}
+        {/* ── Face Test (temporal, para probar las caras) ────────────── */}
+        {isConnected && (
+          <Card className={`mt-6 ${theme === 'retro' ? "border-2 border-black rounded-2xl shadow-[4px_4px_0_0_rgba(0,0,0,0.3)]" : ""}`}>
+            <CardHeader className="pb-4">
+              <CardTitle className="text-lg">🎭 Face Test</CardTitle>
+            </CardHeader>
+            <CardContent className="space-y-3">
+              <p className="text-xs text-muted-foreground">
+                Send a face directly to Espy to preview each expression.
+              </p>
+              <div className="grid grid-cols-2 gap-3">
+                {FACES.map(({ anim, label, desc }) => (
+                  <button
+                    key={anim}
+                    onClick={() => sendFaceTest(anim)}
+                    className="flex flex-col items-start p-3 rounded-lg border border-border hover:bg-muted transition-colors text-left"
+                  >
+                    <span className="font-medium text-sm">{label}</span>
+                    <span className="text-xs text-muted-foreground mt-0.5">{desc}</span>
+                  </button>
+                ))}
+              </div>
+            </CardContent>
+          </Card>
+        )}
+        {/* ── /Face Test ─────────────────────────────────────────────── */}
+
+        {/* ── Servo Movement Simulator (comentado hasta implementar /api/servo en firmware) ── */}
+        {/*
         <Card className={`mt-6 ${theme === 'retro' ? "border-2 border-black rounded-2xl shadow-[4px_4px_0_0_rgba(0,0,0,0.3)]" : ""}`}>
           <CardHeader className="pb-4">
             <CardTitle className="text-lg">🎮 Servo Movement Simulator</CardTitle>
           </CardHeader>
           <CardContent className="space-y-6">
-            {/* Pattern Selector */}
             <div className="grid grid-cols-3 gap-2">
               {(Object.keys(servoPatterns) as Array<keyof typeof servoPatterns>).map((key) => (
                 <Button
@@ -435,7 +497,6 @@ const EspyPage: React.FC<EspyPageProps> = ({ theme = 'clean' }) => {
               ))}
             </div>
 
-            {/* Pattern Info */}
             <div className="text-sm bg-muted p-3 rounded-lg">
               <div className="flex justify-between items-center">
                 <div className="font-medium text-foreground">{servoPatterns[selectedPattern].name}</div>
@@ -446,35 +507,24 @@ const EspyPage: React.FC<EspyPageProps> = ({ theme = 'clean' }) => {
               <div className="text-muted-foreground text-xs mt-1">{servoPatterns[selectedPattern].description}</div>
             </div>
 
-            {/* Servo Visualization */}
             <div className="relative h-40 bg-gradient-to-b from-slate-100 to-slate-200 dark:from-slate-800 dark:to-slate-900 rounded-xl overflow-hidden">
-              {/* Frame & Angle display */}
               <div className="absolute top-2 left-2 bg-black/60 text-white text-xs px-2 py-1 rounded font-mono">
                 Frame: {frame}/{servoPatterns[selectedPattern].totalFrames}
               </div>
               <div className="absolute top-2 right-2 bg-black/60 text-white text-xs px-2 py-1 rounded font-mono">
                 {servoAngle}°
               </div>
-
-              {/* Playing indicator */}
               {isPlaying && (
                 <div className="absolute top-2 left-1/2 -translate-x-1/2 bg-green-500 text-white text-xs px-2 py-1 rounded animate-pulse">
                   ● PLAYING
                 </div>
               )}
-
-              {/* Servo visualization */}
               <div className="absolute inset-x-0 bottom-6 flex justify-center">
                 <div className="relative w-56 h-28">
-                  {/* Degree markers */}
                   <div className="absolute left-0 bottom-0 text-xs text-muted-foreground font-mono">15°</div>
                   <div className="absolute left-1/2 -translate-x-1/2 bottom-0 text-xs text-muted-foreground font-mono">90°</div>
                   <div className="absolute right-0 bottom-0 text-xs text-muted-foreground font-mono">165°</div>
-
-                  {/* Arc guide */}
                   <div className="absolute left-1/2 bottom-0 w-40 h-20 -translate-x-1/2 border-t-2 border-dashed border-slate-400/30 rounded-t-full" />
-
-                  {/* Servo arm - CSS transition for smooth movement */}
                   <div
                     className="absolute left-1/2 bottom-0 w-1.5 h-24 bg-gradient-to-t from-orange-600 via-orange-500 to-orange-400 rounded-full origin-bottom shadow-lg"
                     style={{
@@ -482,19 +532,15 @@ const EspyPage: React.FC<EspyPageProps> = ({ theme = 'clean' }) => {
                       transition: 'transform 150ms ease-out',
                     }}
                   >
-                    {/* Servo head */}
                     <div className="absolute -top-4 left-1/2 -translate-x-1/2 w-8 h-8 bg-slate-700 rounded-full border-2 border-slate-500 flex items-center justify-center shadow-md">
                       <div className={`w-3 h-3 rounded-full ${isPlaying ? 'bg-green-400 animate-pulse' : 'bg-slate-500'}`} />
                     </div>
                   </div>
-
-                  {/* Servo base */}
                   <div className="absolute left-1/2 -translate-x-1/2 bottom-0 w-10 h-5 bg-slate-600 rounded-t-lg shadow-md" />
                 </div>
               </div>
             </div>
 
-            {/* Keyframe Timeline */}
             <div className="space-y-3">
               <div className="flex justify-between items-center">
                 <div className="text-xs font-medium text-muted-foreground">Timeline</div>
@@ -502,22 +548,15 @@ const EspyPage: React.FC<EspyPageProps> = ({ theme = 'clean' }) => {
                   {servoPatterns[selectedPattern].keyframes.length} keyframes
                 </div>
               </div>
-
-              {/* Progress bar with keyframe markers */}
               <div className="relative h-10 bg-muted rounded-lg overflow-hidden">
-                {/* Progress fill */}
                 <div
                   className="absolute inset-y-0 left-0 bg-primary/30"
                   style={{ width: `${(frame / servoPatterns[selectedPattern].totalFrames) * 100}%` }}
                 />
-
-                {/* Playhead */}
                 <div
                   className="absolute top-0 bottom-0 w-0.5 bg-primary z-10"
                   style={{ left: `${(frame / servoPatterns[selectedPattern].totalFrames) * 100}%` }}
                 />
-
-                {/* Keyframe markers */}
                 {servoPatterns[selectedPattern].keyframes.map((kf, i) => (
                   <div
                     key={i}
@@ -531,7 +570,6 @@ const EspyPage: React.FC<EspyPageProps> = ({ theme = 'clean' }) => {
                     style={{ left: `calc(${(kf.frame / servoPatterns[selectedPattern].totalFrames) * 100}% - 8px)` }}
                     title={`Frame ${kf.frame}: ${kf.label} (${kf.position}°)`}
                     onClick={() => {
-                      // Jump to this keyframe
                       setFrame(kf.frame);
                       setServoAngle(kf.position);
                       setActiveKeyframeIndex(i);
@@ -539,8 +577,6 @@ const EspyPage: React.FC<EspyPageProps> = ({ theme = 'clean' }) => {
                   />
                 ))}
               </div>
-
-              {/* Keyframe labels */}
               <div className="flex flex-wrap gap-1.5">
                 {servoPatterns[selectedPattern].keyframes.map((kf, i) => (
                   <button
@@ -549,10 +585,7 @@ const EspyPage: React.FC<EspyPageProps> = ({ theme = 'clean' }) => {
                       setFrame(kf.frame);
                       setServoAngle(kf.position);
                       setActiveKeyframeIndex(i);
-                      // Also send to Espy if connected
-                      if (isConnected) {
-                        sendServoPosition(kf.position);
-                      }
+                      if (isConnected) sendServoPosition(kf.position);
                     }}
                     className={`px-2 py-1 rounded text-xs transition-colors
                       ${activeKeyframeIndex === i
@@ -568,7 +601,6 @@ const EspyPage: React.FC<EspyPageProps> = ({ theme = 'clean' }) => {
               </div>
             </div>
 
-            {/* Controls */}
             <div className="flex gap-2">
               <Button
                 onClick={isPlaying ? stopSimulation : playAndSendToEspy}
@@ -576,61 +608,33 @@ const EspyPage: React.FC<EspyPageProps> = ({ theme = 'clean' }) => {
                 className="flex-1"
               >
                 {isPlaying ? (
-                  <>
-                    <Square className="h-4 w-4 mr-2" />
-                    Stop
-                  </>
+                  <><Square className="h-4 w-4 mr-2" />Stop</>
                 ) : (
-                  <>
-                    <Play className="h-4 w-4 mr-2" />
-                    {isConnected ? 'Play & Send to Espy' : 'Play Preview'}
-                  </>
+                  <><Play className="h-4 w-4 mr-2" />{isConnected ? 'Play & Send to Espy' : 'Play Preview'}</>
                 )}
               </Button>
-              <Button
-                onClick={resetSimulation}
-                variant="outline"
-                disabled={isPlaying}
-                title="Reset"
-              >
+              <Button onClick={resetSimulation} variant="outline" disabled={isPlaying} title="Reset">
                 <RotateCcw className="h-4 w-4" />
               </Button>
             </div>
 
-            {/* Connection status */}
             <div className={`text-xs text-center py-2 px-3 rounded ${isConnected ? 'bg-green-500/10 text-green-600' : 'bg-muted text-muted-foreground'}`}>
               {isConnected
                 ? `✓ Connected to Espy (${customIP}) - animations will sync`
                 : 'Not connected - preview only mode'}
             </div>
 
-            {/* Direct Servo Control */}
             {isConnected && (
               <div className="pt-4 border-t space-y-3">
                 <div className="text-sm font-medium">Direct Servo Control</div>
                 <div className="flex gap-2">
-                  <Button
-                    variant="outline"
-                    size="sm"
-                    className="flex-1"
-                    onClick={() => sendServoPosition('left')}
-                  >
+                  <Button variant="outline" size="sm" className="flex-1" onClick={() => sendServoPosition('left')}>
                     ← Left ({SERVO_LEFT}°)
                   </Button>
-                  <Button
-                    variant="outline"
-                    size="sm"
-                    className="flex-1"
-                    onClick={() => sendServoPosition('center')}
-                  >
+                  <Button variant="outline" size="sm" className="flex-1" onClick={() => sendServoPosition('center')}>
                     Center ({SERVO_CENTER}°)
                   </Button>
-                  <Button
-                    variant="outline"
-                    size="sm"
-                    className="flex-1"
-                    onClick={() => sendServoPosition('right')}
-                  >
+                  <Button variant="outline" size="sm" className="flex-1" onClick={() => sendServoPosition('right')}>
                     Right ({SERVO_RIGHT}°) →
                   </Button>
                 </div>
@@ -638,6 +642,9 @@ const EspyPage: React.FC<EspyPageProps> = ({ theme = 'clean' }) => {
             )}
           </CardContent>
         </Card>
+        */}
+        {/* ── /Servo Movement Simulator ──────────────────────────────── */}
+
       </div>
     </div>
   );

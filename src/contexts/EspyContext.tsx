@@ -1,4 +1,5 @@
 import React, { createContext, useContext, useState, useEffect, useCallback } from 'react';
+import { invoke } from '@tauri-apps/api/core';
 import { useTodo } from './TodoContext';
 
 const ESPY_HOSTNAME = "espy.local";
@@ -99,41 +100,37 @@ export const EspyProvider: React.FC<{ children: React.ReactNode }> = ({ children
     setIsConnecting(true);
     setConnectionError('');
 
-    // Build list of addresses to try (smart fallback)
+    // 1. UDP auto-discovery (works on Windows/cable/WiFi, no manual config needed)
+    try {
+      const result = await invoke<string>('discover_espy');
+      const data = JSON.parse(result) as { ip: string; name: string };
+      if (data.ip && await tryConnect(data.ip)) {
+        setCustomIP(data.ip);
+        setIsConnecting(false);
+        return;
+      }
+    } catch {
+      console.log('🔍 UDP discovery no encontró Espy, intentando otras direcciones...');
+    }
+
+    // 2. Fallback: dirección guardada / espy.local / última IP conocida
     const addressesToTry: string[] = [];
-
-    // 1. First try the user-specified address (if not default)
-    if (customIP && customIP !== ESPY_HOSTNAME) {
-      addressesToTry.push(customIP);
-    }
-
-    // 2. Try espy.local (mDNS)
+    if (customIP && customIP !== ESPY_HOSTNAME) addressesToTry.push(customIP);
     addressesToTry.push(ESPY_HOSTNAME);
-
-    // 3. Try last known working IP (if different from above)
     const lastWorkingIP = localStorage.getItem('espy_last_working_ip');
-    if (lastWorkingIP && !addressesToTry.includes(lastWorkingIP)) {
-      addressesToTry.push(lastWorkingIP);
-    }
+    if (lastWorkingIP && !addressesToTry.includes(lastWorkingIP)) addressesToTry.push(lastWorkingIP);
 
-    console.log('🔍 Trying to connect to Espy at:', addressesToTry);
-
-    // Try each address
     for (const address of addressesToTry) {
       if (await tryConnect(address)) {
-        // Update customIP to the working address
-        if (address !== customIP) {
-          setCustomIP(address);
-        }
+        if (address !== customIP) setCustomIP(address);
         setIsConnecting(false);
         return;
       }
     }
 
-    // All addresses failed
     setIsConnected(false);
     setEspyStatus(null);
-    setConnectionError('🔍 Cannot find Espy. Make sure it\'s powered on and connected to the same WiFi network. Press "Show Debug Info" on Espy to see its IP address.');
+    setConnectionError('No se encontró Espy. Asegurate de que esté encendido y en la misma red WiFi.');
     setIsConnecting(false);
   }, [customIP, tryConnect, setCustomIP]);
 
@@ -310,15 +307,7 @@ export const EspyProvider: React.FC<{ children: React.ReactNode }> = ({ children
       ? userData.tasks.find(t => t.id === currentTaskId)
       : null;
 
-    // Helper to check if we need to resync (animation not yet sent or device state mismatch)
-    // This now checks both local sync state and device state
-    const needsSync = (targetAnim: string) => {
-      // If we haven't successfully synced this animation yet, we need to sync
-      if (lastSyncedAnimation !== targetAnim) return true;
-      // If connected and device reports different animation, resync
-      if (isConnected && espyStatus && espyStatus.animation !== targetAnim) return true;
-      return false;
-    };
+    const needsSync = (targetAnim: string) => lastSyncedAnimation !== targetAnim;
 
     // Determine the current activity state and send appropriate animation
     if (pomodoroTimer.isRunning) {
@@ -368,7 +357,6 @@ export const EspyProvider: React.FC<{ children: React.ReactNode }> = ({ children
     }
   }, [
     isConnected,
-    espyStatus, // Add espyStatus dependency to trigger resync checks
     isPlayingCompletionAnimation,
     pomodoroTimer.isRunning,
     pomodoroTimer.justCompleted,

@@ -7,6 +7,7 @@ on:
 
 jobs:
   release:
+    environment: espy_app
     permissions:
       contents: write
     runs-on: windows-latest
@@ -43,8 +44,7 @@ jobs:
           projectPath: app
           tagName: ${{ github.ref_name }}
           releaseName: Espy ${{ github.ref_name }}
-          releaseBody: |
-            ## What's new
-            See the commit history for changes.
-          releaseDraft: false
+          releaseBody: ""
+          releaseDraft: true
           prerelease: false
+          generateReleaseNotes: true
