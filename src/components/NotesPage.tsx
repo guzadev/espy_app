@@ -2,6 +2,7 @@ import React, { useState, useEffect } from 'react';
 import { ChevronLeft, Edit3, Bold, Italic, List, Plus } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { useTodo } from '@/contexts/TodoContext';
+import CategoryModal from '@/components/CategoryModal';
 
 interface NotesPageProps {
   onPageChange?: (page: 'dashboard' | 'tasks' | 'reminders' | 'events' | 'notifications' | 'pomodoro' | 'notes' | 'activity' | 'timetracking' | 'settings' | 'espy' | 'schedule') => void;
@@ -9,7 +10,8 @@ interface NotesPageProps {
 }
 
 const NotesPage: React.FC<NotesPageProps> = ({ onPageChange, theme = 'clean' }) => {
-  const { userData, updateUserNotes } = useTodo();
+  const { userData, updateUserNotes, addCategory } = useTodo();
+  const [categoryModalOpen, setCategoryModalOpen] = useState(false);
   const [selectedView, setSelectedView] = useState<'all' | string>('all');
   const [noteContent, setNoteContent] = useState('');
   const [isTyping, setIsTyping] = useState(false);
@@ -123,6 +125,7 @@ const NotesPage: React.FC<NotesPageProps> = ({ onPageChange, theme = 'clean' }) 
   };
 
   return (
+    <>
     <div className="flex h-full bg-background relative">
       {/* Main Content Area */}
       <div className="flex-1 flex flex-col h-full">
@@ -185,6 +188,20 @@ const NotesPage: React.FC<NotesPageProps> = ({ onPageChange, theme = 'clean' }) 
                     </div>
                   </button>
                 ))}
+
+                {/* New Category button */}
+                <button
+                  onClick={() => setCategoryModalOpen(true)}
+                  className={
+                    theme === 'retro'
+                      ? "pb-1.5 px-2 flex items-center gap-1 text-sm font-bold text-gray-400 dark:text-gray-500 hover:text-foreground border-2 border-transparent hover:border-gray-300 dark:hover:border-gray-600 rounded-md transition-all whitespace-nowrap"
+                      : "pb-3 px-2 flex items-center gap-1 text-sm text-gray-400 hover:text-gray-600 border-b-2 border-transparent transition-colors whitespace-nowrap"
+                  }
+                  title="Add new category"
+                >
+                  <Plus className="w-3.5 h-3.5" />
+                  New
+                </button>
               </div>
               
               {/* Tags and Save Status - Right Side */}
@@ -224,11 +241,11 @@ const NotesPage: React.FC<NotesPageProps> = ({ onPageChange, theme = 'clean' }) 
         {/* Content */}
         <div className="flex-1 overflow-y-auto p-6 bg-background">
           {/* Main Content Area */}
-          <div className={theme === 'retro' ? "bg-white dark:bg-gray-800 rounded-lg shadow-sm border dark:border-gray-600" : "bg-white rounded-lg shadow-sm border"}>
+          <div className={theme === 'retro' ? "bg-white dark:bg-gray-800 rounded-lg shadow-sm border dark:border-gray-600" : "bg-zinc-900 rounded-lg shadow-sm border border-zinc-700"}>
             {/* Notes Header */}
-            <div className={theme === 'retro' ? "border-b dark:border-gray-600 p-4" : "border-b p-4"}>
+            <div className={theme === 'retro' ? "border-b dark:border-gray-600 p-4" : "border-b border-zinc-700 p-4"}>
               <div className="flex items-center justify-between">
-                <h2 className={theme === 'retro' ? "text-xl font-semibold text-gray-900 dark:text-gray-100" : "text-xl font-semibold text-gray-900"}>
+                <h2 className={theme === 'retro' ? "text-xl font-semibold text-gray-900 dark:text-gray-100" : "text-xl font-semibold text-zinc-100"}>
                   {selectedView === 'all' 
                     ? 'All Notes' 
                     : categories.find(cat => cat.id === selectedView)?.name + ' Notes'
@@ -276,15 +293,15 @@ const NotesPage: React.FC<NotesPageProps> = ({ onPageChange, theme = 'clean' }) 
                 }...`}
                 className={theme === 'retro' 
                   ? "w-full h-[600px] p-4 border border-gray-200 dark:border-gray-600 rounded-lg resize-none focus:outline-none focus:ring-2 focus:ring-blue-500 dark:focus:ring-blue-400 focus:border-transparent text-gray-900 dark:text-gray-100 dark:bg-gray-700 leading-relaxed"
-                  : "w-full h-[600px] p-4 border border-gray-200 rounded-lg resize-none focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent text-gray-900 leading-relaxed"
+                  : "w-full h-[600px] p-4 border border-zinc-700 rounded-lg resize-none focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent text-zinc-100 bg-zinc-900 placeholder:text-zinc-500 leading-relaxed"
                 }
                 style={{ fontFamily: 'ui-monospace, SFMono-Regular, "SF Mono", Monaco, Consolas, "Liberation Mono", "Courier New", monospace' }}
               />
             </div>
 
             {/* Footer Info */}
-            <div className={theme === 'retro' ? "border-t dark:border-gray-600 p-4 bg-gray-50 dark:bg-gray-900" : "border-t p-4 bg-gray-50"}>
-              <div className={theme === 'retro' ? "flex items-center justify-between text-sm text-gray-500 dark:text-gray-400" : "flex items-center justify-between text-sm text-gray-500"}>
+            <div className={theme === 'retro' ? "border-t dark:border-gray-600 p-4 bg-gray-50 dark:bg-gray-900" : "border-t border-zinc-700 p-4 bg-zinc-800/50"}>
+              <div className={theme === 'retro' ? "flex items-center justify-between text-sm text-gray-500 dark:text-gray-400" : "flex items-center justify-between text-sm text-zinc-400"}>
                 <span>
                   {noteContent.length} characters • {noteContent.split('\n').length} lines
                 </span>
@@ -295,6 +312,20 @@ const NotesPage: React.FC<NotesPageProps> = ({ onPageChange, theme = 'clean' }) 
         </div>
       </div>
     </div>
+
+      {/* New Category Modal */}
+      <CategoryModal
+        open={categoryModalOpen}
+        onOpenChange={setCategoryModalOpen}
+        mode="create"
+        theme={theme}
+        onSave={(name, color, icon) => {
+          addCategory(name, color, icon);
+          // Switch to the newly created category tab (it will be the last one)
+        }}
+        defaultColorIndex={categories.length}
+      />
+    </>
   );
 };
 

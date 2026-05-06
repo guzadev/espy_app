@@ -1,5 +1,7 @@
 import React, { useState } from 'react';
-import { Plus, CheckSquare, Clock, Calendar, X, CalendarDays, RotateCcw, MoreVertical, Edit, Play, Trash2, Eye, GripVertical, ChevronDown, ChevronUp, Timer } from 'lucide-react';
+import { Plus, CheckSquare, Clock, Calendar, X, CalendarDays, RotateCcw, MoreVertical, Edit, Play, Trash2, Eye, GripVertical, ChevronDown, ChevronUp, Timer, Pencil } from 'lucide-react';
+import CategoryModal from '@/components/CategoryModal';
+import type { Category } from '@/types/todo';
 import { format, addDays } from 'date-fns';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -77,6 +79,7 @@ const TasksPage: React.FC<TasksPageProps> = ({ currentView, onViewChange, onPage
     reorderTasks,
     pomodoroTimer,
     addCategory,
+    updateCategory,
     deleteCategory,
   } = useTodo();
   
@@ -139,6 +142,9 @@ const TasksPage: React.FC<TasksPageProps> = ({ currentView, onViewChange, onPage
   const [newCategoryColor, setNewCategoryColor] = useState('');
   const [completedTasksPage, setCompletedTasksPage] = useState(1);
   const [deletingCategory, setDeletingCategory] = useState<{ id: string; name: string; taskCount: number } | null>(null);
+  // Edit category state
+  const [editCategoryModalOpen, setEditCategoryModalOpen] = useState(false);
+  const [editingCategory, setEditingCategory] = useState<Category | undefined>(undefined);
 
   // Function to reset the create task form
   const resetCreateTaskForm = () => {
@@ -1536,13 +1542,13 @@ const TasksPage: React.FC<TasksPageProps> = ({ currentView, onViewChange, onPage
                         const taskCount = getCategoryTaskCount(category.id);
                         return (
                           <div key={category.id} className="flex items-center gap-1 mb-1 group">
-                            <SelectItem 
+                            <SelectItem
                               value={category.id}
                               className={theme === 'retro' ? "flex-1 rounded-lg hover:bg-accent/50 font-bold cursor-pointer" : "flex-1"}
                             >
                               <div className="flex items-center gap-2">
                                 <span>{category.icon}</span>
-                                <div 
+                                <div
                                   className={theme === 'retro' ? "w-2 h-2 rounded-sm flex-shrink-0 border border-black dark:border-white" : "w-2 h-2 rounded-full flex-shrink-0"}
                                   style={{ backgroundColor: category.color }}
                                 />
@@ -1554,6 +1560,23 @@ const TasksPage: React.FC<TasksPageProps> = ({ currentView, onViewChange, onPage
                                 )}
                               </div>
                             </SelectItem>
+                            <button
+                              onClick={(e) => {
+                                e.preventDefault();
+                                e.stopPropagation();
+                                setEditingCategory(category);
+                                setEditCategoryModalOpen(true);
+                              }}
+                              className={
+                                theme === 'retro'
+                                  ? "h-8 w-8 p-0 flex items-center justify-center text-blue-600 dark:text-blue-400 hover:bg-blue-100 dark:hover:bg-blue-900/30 border-2 border-transparent hover:border-blue-300 dark:hover:border-blue-700 rounded-md transition-colors"
+                                  : "h-8 w-8 p-0 flex items-center justify-center text-blue-600 dark:text-blue-400 hover:bg-blue-100 dark:hover:bg-blue-900/30 rounded transition-colors"
+                              }
+                              type="button"
+                              title="Edit category"
+                            >
+                              <Pencil className="w-3.5 h-3.5" />
+                            </button>
                             <button
                               onClick={(e) => {
                                 e.preventDefault();
@@ -1710,14 +1733,30 @@ const TasksPage: React.FC<TasksPageProps> = ({ currentView, onViewChange, onPage
                     <SelectItem key={category.id} value={category.id}>
                       <div className="flex items-center gap-2">
                         <span>{category.icon}</span>
-                        <div 
-                          className="w-2 h-2 rounded-full flex-shrink-0" 
+                        <div
+                          className="w-2 h-2 rounded-full flex-shrink-0"
                           style={{ backgroundColor: category.color }}
                         />
                         <span>{category.name}</span>
                       </div>
                     </SelectItem>
                   ))}
+                  <div className={theme === 'retro' ? "mt-2 pt-2 border-t-2 border-gray-300 dark:border-gray-600" : "mt-1 pt-1 border-t"}>
+                    <button
+                      onClick={(e) => {
+                        e.preventDefault();
+                        setIsAddCategoryModalOpen(true);
+                      }}
+                      className={
+                        theme === 'retro'
+                          ? "w-full flex items-center gap-2 px-3 py-2 rounded-lg hover:bg-[#ffe164] dark:hover:bg-[#ffd700]/20 font-bold text-foreground border-2 border-transparent hover:border-black dark:hover:border-white transition-all"
+                          : "w-full flex items-center gap-2 px-2 py-1.5 rounded hover:bg-accent text-sm"
+                      }
+                    >
+                      <Plus className="w-4 h-4" />
+                      <span>Create New Category</span>
+                    </button>
+                  </div>
                 </SelectContent>
               </Select>
             ) : (
@@ -2062,13 +2101,13 @@ const TasksPage: React.FC<TasksPageProps> = ({ currentView, onViewChange, onPage
                     const taskCount = getCategoryTaskCount(category.id);
                     return (
                       <div key={category.id} className="flex items-center gap-1 mb-1 group">
-                        <SelectItem 
+                        <SelectItem
                           value={category.id}
                           className={theme === 'retro' ? "flex-1 rounded-lg hover:bg-accent/50 font-bold cursor-pointer" : "flex-1"}
                         >
                           <div className="flex items-center gap-2">
                             <span>{category.icon}</span>
-                            <div 
+                            <div
                               className={theme === 'retro' ? "w-2 h-2 rounded-sm flex-shrink-0 border border-black dark:border-white" : "w-2 h-2 rounded-full flex-shrink-0"}
                               style={{ backgroundColor: category.color }}
                             />
@@ -2080,6 +2119,23 @@ const TasksPage: React.FC<TasksPageProps> = ({ currentView, onViewChange, onPage
                             )}
                           </div>
                         </SelectItem>
+                        <button
+                          onClick={(e) => {
+                            e.preventDefault();
+                            e.stopPropagation();
+                            setEditingCategory(category);
+                            setEditCategoryModalOpen(true);
+                          }}
+                          className={
+                            theme === 'retro'
+                              ? "h-8 w-8 p-0 flex items-center justify-center text-blue-600 dark:text-blue-400 hover:bg-blue-100 dark:hover:bg-blue-900/30 border-2 border-transparent hover:border-blue-300 dark:hover:border-blue-700 rounded-md transition-colors"
+                              : "h-8 w-8 p-0 flex items-center justify-center text-blue-600 dark:text-blue-400 hover:bg-blue-100 dark:hover:bg-blue-900/30 rounded transition-colors"
+                          }
+                          type="button"
+                          title="Edit category"
+                        >
+                          <Pencil className="w-3.5 h-3.5" />
+                        </button>
                         <button
                           onClick={(e) => {
                             e.preventDefault();
@@ -2983,6 +3039,19 @@ const TasksPage: React.FC<TasksPageProps> = ({ currentView, onViewChange, onPage
           )}
         </DialogContent>
       </Dialog>
+      {/* Edit Category Modal */}
+      <CategoryModal
+        open={editCategoryModalOpen}
+        onOpenChange={setEditCategoryModalOpen}
+        mode="edit"
+        category={editingCategory}
+        theme={theme}
+        onSave={(name, color, icon) => {
+          if (editingCategory) {
+            updateCategory(editingCategory.id, { name, color, icon });
+          }
+        }}
+      />
     </div>
     </TooltipProvider>
   );

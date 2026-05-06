@@ -34,3 +34,4 @@ src-tauri/gen/
 
 # Claude Code internal files
 .claude/
+CLAUDE.md

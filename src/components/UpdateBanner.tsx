@@ -1,5 +1,5 @@
 import { useEffect, useState } from "react";
-import { check, type Update } from "@tauri-apps/plugin-updater";
+import { check, type Update, type DownloadEvent } from "@tauri-apps/plugin-updater";
 import { invoke } from "@tauri-apps/api/core";
 import { X, Download, ChevronDown, ChevronUp } from "lucide-react";
 
@@ -34,7 +34,7 @@ export default function UpdateBanner() {
     setInstalling(true);
     let downloaded = 0;
     let total = 0;
-    await update.downloadAndInstall((event) => {
+    await update.downloadAndInstall((event: DownloadEvent) => {
       if (event.event === "Started") total = event.data.contentLength ?? 0;
       else if (event.event === "Progress") {
         downloaded += event.data.chunkLength;

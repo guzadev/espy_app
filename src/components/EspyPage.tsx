@@ -271,15 +271,17 @@ const EspyPage: React.FC<EspyPageProps> = ({ theme = 'clean' }) => {
 
     await post(anim);
 
-    // Love and startup return to idle automatically from firmware, restore the rest manually
+    // Love and startup return to idle automatically from firmware.
+    // Looping animations show for 6s then return to the correct Pomodoro state.
     if (anim !== 'love' && anim !== 'startup') {
       setTimeout(() => {
-        // Restore correct animation based on current Pomodoro state
-        sendAnimation(activityState === 'focus' ? 'focus'
-          : activityState === 'break'           ? 'break'
-          : activityState === 'paused'          ? 'paused'
-          : 'idle');
-      }, 4000);
+        sendAnimation(
+          activityState === 'focus'  ? 'focus'  :
+          activityState === 'break'  ? 'break'  :
+          activityState === 'paused' ? 'paused' :
+          'idle'
+        );
+      }, 6000);
     }
   };
 

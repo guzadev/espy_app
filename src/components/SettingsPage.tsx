@@ -3,13 +3,16 @@ import { ToggleSwitch } from '@/components/ui/toggle-switch';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Separator } from '@/components/ui/separator';
 import { Button } from '@/components/ui/button';
-import { Sun, Volume2, RotateCcw, Sparkles, Square, Moon, Clock, RefreshCw, CheckCircle2, ArrowUpCircle, ChevronDown, ChevronUp } from 'lucide-react';
+import { Sun, Volume2, RotateCcw, Sparkles, Square, Moon, Clock, RefreshCw, CheckCircle2, ArrowUpCircle, ChevronDown, ChevronUp, Plus, Pencil, Trash2, Tag } from 'lucide-react';
 import { useTodo } from '@/contexts/TodoContext';
 import { updateSettings } from '@/utils/storage';
 import { useDarkMode } from '@/contexts/DarkModeContext';
 import { getVersion } from '@tauri-apps/api/app';
-import { check, type Update } from '@tauri-apps/plugin-updater';
+import { check, type Update, type DownloadEvent } from '@tauri-apps/plugin-updater';
 import { invoke } from '@tauri-apps/api/core';
+import CategoryModal from '@/components/CategoryModal';
+import type { Category } from '@/types/todo';
+import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog';
 
 interface SettingsPageProps {
   onPageChange?: (page: 'dashboard' | 'tasks' | 'reminders' | 'events' | 'notifications' | 'pomodoro' | 'notes' | 'activity' | 'timetracking' | 'settings' | 'espy' | 'schedule') => void;
@@ -17,7 +20,7 @@ interface SettingsPageProps {
 }
 
 const SettingsPage: React.FC<SettingsPageProps> = ({ onPageChange, theme = 'clean' }) => {
-  const { userData } = useTodo();
+  const { userData, addCategory, updateCategory, deleteCategory } = useTodo();
   const { themeMode, setThemeMode } = useDarkMode();
   const [pomodoroSound, setPomodoroSound] = React.useState(
     userData.settings.pomodoroSound !== undefined ? userData.settings.pomodoroSound : true
@@ -27,6 +30,43 @@ const SettingsPage: React.FC<SettingsPageProps> = ({ onPageChange, theme = 'clea
   );
   const [workDuration, setWorkDuration] = React.useState(userData.settings.workDuration || 25);
   const [shortBreakDuration, setShortBreakDuration] = React.useState(userData.settings.shortBreakDuration || 5);
+
+  // Category management state
+  const [categoryModalOpen, setCategoryModalOpen] = React.useState(false);
+  const [categoryModalMode, setCategoryModalMode] = React.useState<'create' | 'edit'>('create');
+  const [editingCategory, setEditingCategory] = React.useState<Category | undefined>(undefined);
+  const [deletingCategory, setDeletingCategory] = React.useState<Category | null>(null);
+
+  const handleOpenCreateCategory = () => {
+    setCategoryModalMode('create');
+    setEditingCategory(undefined);
+    setCategoryModalOpen(true);
+  };
+
+  const handleOpenEditCategory = (cat: Category) => {
+    setCategoryModalMode('edit');
+    setEditingCategory(cat);
+    setCategoryModalOpen(true);
+  };
+
+  const handleSaveCategory = (name: string, color: string, icon: string) => {
+    if (categoryModalMode === 'create') {
+      addCategory(name, color, icon);
+    } else if (editingCategory) {
+      updateCategory(editingCategory.id, { name, color, icon });
+    }
+  };
+
+  const handleDeleteCategory = (cat: Category) => {
+    setDeletingCategory(cat);
+  };
+
+  const confirmDeleteCategory = () => {
+    if (deletingCategory) {
+      deleteCategory(deletingCategory.id);
+      setDeletingCategory(null);
+    }
+  };
 
   // Updates state
   const [currentVersion, setCurrentVersion] = React.useState<string>('');
@@ -63,7 +103,7 @@ const SettingsPage: React.FC<SettingsPageProps> = ({ onPageChange, theme = 'clea
     setInstalling(true);
     let downloaded = 0;
     let total = 0;
-    await availableUpdate.downloadAndInstall((event) => {
+    await availableUpdate.downloadAndInstall((event: DownloadEvent) => {
       if (event.event === 'Started') total = event.data.contentLength ?? 0;
       else if (event.event === 'Progress') {
         downloaded += event.data.chunkLength;
@@ -437,6 +477,100 @@ const SettingsPage: React.FC<SettingsPageProps> = ({ onPageChange, theme = 'clea
             </CardContent>
           </Card>
 
+          {/* Categories Section */}
+          <Card className={
+            theme === 'retro'
+              ? "bg-[#e8f0ff]/30 dark:bg-[#6366f1]/10 border-2 border-black dark:border-white rounded-2xl shadow-[4px_4px_0_0_rgba(0,0,0,0.3)] dark:shadow-[4px_4px_0_0_rgba(255,255,255,0.1)]"
+              : ""
+          }>
+            <CardHeader>
+              <div className="flex items-center justify-between">
+                <div>
+                  <CardTitle className={theme === 'retro' ? "flex items-center gap-2 font-bold text-foreground" : "flex items-center gap-2"}>
+                    <Tag className="h-5 w-5" />
+                    Categories
+                  </CardTitle>
+                  <CardDescription className={theme === 'retro' ? "text-muted-foreground font-medium mt-1" : "mt-1"}>
+                    Manage your task and schedule categories
+                  </CardDescription>
+                </div>
+                <Button
+                  size="sm"
+                  onClick={handleOpenCreateCategory}
+                  className={
+                    theme === 'retro'
+                      ? "font-bold border-2 border-black dark:border-white shadow-[2px_2px_0_0_rgba(0,0,0,0.3)] dark:shadow-[2px_2px_0_0_rgba(255,255,255,0.1)]"
+                      : ""
+                  }
+                >
+                  <Plus className="h-4 w-4 mr-1" />
+                  New Category
+                </Button>
+              </div>
+            </CardHeader>
+            <CardContent>
+              {userData.categories.length === 0 ? (
+                <p className="text-sm text-muted-foreground text-center py-4">
+                  No categories yet. Create one to get started!
+                </p>
+              ) : (
+                <div className="space-y-2">
+                  {userData.categories.map((cat) => (
+                    <div
+                      key={cat.id}
+                      className={
+                        theme === 'retro'
+                          ? "flex items-center justify-between p-3 rounded-xl border-2 border-black dark:border-gray-600 bg-white dark:bg-gray-800 shadow-[2px_2px_0_0_rgba(0,0,0,0.15)]"
+                          : "flex items-center justify-between p-3 rounded-lg border bg-card hover:bg-accent/30 transition-colors"
+                      }
+                    >
+                      <div className="flex items-center gap-3">
+                        {/* Color dot */}
+                        <span
+                          className="w-3 h-3 rounded-full flex-shrink-0"
+                          style={{ backgroundColor: cat.color }}
+                        />
+                        {/* Icon + name */}
+                        <span className="text-lg leading-none">{cat.icon}</span>
+                        <span className={theme === 'retro' ? "font-bold text-foreground" : "text-sm font-medium text-foreground"}>
+                          {cat.name}
+                        </span>
+                      </div>
+                      <div className="flex items-center gap-1">
+                        <Button
+                          variant="ghost"
+                          size="sm"
+                          onClick={() => handleOpenEditCategory(cat)}
+                          className={
+                            theme === 'retro'
+                              ? "h-8 w-8 p-0 hover:bg-blue-50 dark:hover:bg-blue-900/30 rounded-lg"
+                              : "h-8 w-8 p-0"
+                          }
+                          title="Edit category"
+                        >
+                          <Pencil className="h-3.5 w-3.5" />
+                        </Button>
+                        <Button
+                          variant="ghost"
+                          size="sm"
+                          onClick={() => handleDeleteCategory(cat)}
+                          className={
+                            theme === 'retro'
+                              ? "h-8 w-8 p-0 hover:bg-red-50 dark:hover:bg-red-900/30 text-red-500 rounded-lg"
+                              : "h-8 w-8 p-0 text-red-500 hover:text-red-600 hover:bg-red-50 dark:hover:bg-red-900/20"
+                          }
+                          title="Delete category"
+                        >
+                          <Trash2 className="h-3.5 w-3.5" />
+                        </Button>
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              )}
+            </CardContent>
+          </Card>
+
           {/* Updates Section */}
           <Card className={
             theme === 'retro'
@@ -548,8 +682,68 @@ const SettingsPage: React.FC<SettingsPageProps> = ({ onPageChange, theme = 'clea
 
         </div>
       </div>
+
+      {/* Category Create/Edit Modal */}
+      <CategoryModal
+        open={categoryModalOpen}
+        onOpenChange={setCategoryModalOpen}
+        mode={categoryModalMode}
+        category={editingCategory}
+        theme={theme}
+        onSave={handleSaveCategory}
+        defaultColorIndex={userData.categories.length}
+      />
+
+      {/* Delete Category Confirmation */}
+      <Dialog open={!!deletingCategory} onOpenChange={() => setDeletingCategory(null)}>
+        <DialogContent className={
+          theme === 'retro'
+            ? "sm:max-w-[400px] bg-white dark:bg-gray-900 border-2 border-black dark:border-white rounded-2xl shadow-[8px_8px_0_0_rgba(0,0,0,0.3)] dark:shadow-[8px_8px_0_0_rgba(255,255,255,0.2)]"
+            : "sm:max-w-[400px]"
+        }>
+          <DialogHeader>
+            <DialogTitle className={theme === 'retro' ? "text-xl font-black text-red-600 dark:text-red-400 flex items-center gap-2" : "text-xl font-semibold text-red-600 dark:text-red-400"}>
+              {theme === 'retro' && <Trash2 className="w-5 h-5" />}
+              Delete Category?
+            </DialogTitle>
+          </DialogHeader>
+          <div className="pt-2 space-y-4">
+            <p className={theme === 'retro' ? "text-sm font-medium text-gray-700 dark:text-gray-300" : "text-sm text-muted-foreground"}>
+              Are you sure you want to delete{' '}
+              <span className="font-semibold text-foreground">
+                {deletingCategory?.icon} {deletingCategory?.name}
+              </span>
+              ? Tasks in this category will remain but become uncategorized.
+            </p>
+            <div className="flex gap-3">
+              <Button
+                variant="destructive"
+                onClick={confirmDeleteCategory}
+                className={
+                  theme === 'retro'
+                    ? "flex-1 font-black border-2 border-black dark:border-red-400 shadow-[3px_3px_0_0_rgba(0,0,0,0.3)] h-10"
+                    : "flex-1"
+                }
+              >
+                Delete
+              </Button>
+              <Button
+                variant="outline"
+                onClick={() => setDeletingCategory(null)}
+                className={
+                  theme === 'retro'
+                    ? "flex-1 font-bold border-2 border-black dark:border-white h-10"
+                    : "flex-1"
+                }
+              >
+                Cancel
+              </Button>
+            </div>
+          </div>
+        </DialogContent>
+      </Dialog>
     </div>
   );
 };
 
-export default SettingsPage; 
+export default SettingsPage;

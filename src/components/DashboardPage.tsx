@@ -432,24 +432,24 @@ const DashboardPage: React.FC<DashboardPageProps> = ({
                             <Tooltip>
                               <TooltipTrigger asChild>
                                 <div className={`
-                                  w-full h-full rounded-lg transition-all duration-200 cursor-pointer 
-                                  flex items-center justify-center gap-1.5 relative group
-                                  ${theme === 'retro' 
+                                  w-full h-full rounded-lg transition-all duration-200 cursor-pointer
+                                  flex items-center justify-center relative group
+                                  ${theme === 'retro'
                                     ? getRetroActivityColor(displayMode === 'tasks' ? day.todos : day.pomodoros) + ' hover:translate-x-[-1px] hover:translate-y-[-1px]'
                                     : getActivityColor(displayMode === 'tasks' ? day.todos : day.pomodoros, displayMode) + ' hover:scale-105 hover:shadow-md'
                                   }
                                 `}>
                                   <span className={
                                     theme === 'retro'
-                                      ? "text-[9px] font-bold"
-                                      : `text-[9px] font-medium ${getTextColor(displayMode === 'tasks' ? day.todos : day.pomodoros, displayMode)}`
+                                      ? "text-2xl font-black leading-none"
+                                      : `text-2xl font-bold leading-none ${getTextColor(displayMode === 'tasks' ? day.todos : day.pomodoros, displayMode)}`
                                   }>
                                     {new Date(day.date).getDate()}
                                   </span>
                                   <span className={
                                     theme === 'retro'
-                                      ? "text-lg font-black"
-                                      : `text-lg font-bold ${getTextColor(displayMode === 'tasks' ? day.todos : day.pomodoros, displayMode)}`
+                                      ? "absolute top-1 right-1.5 text-[16px] font-bold opacity-70"
+                                      : `absolute top-1 right-1.5 text-[16px] font-semibold opacity-60 ${getTextColor(displayMode === 'tasks' ? day.todos : day.pomodoros, displayMode)}`
                                   }>
                                     {displayMode === 'tasks' ? day.todos : day.pomodoros}
                                   </span>

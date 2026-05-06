@@ -14,6 +14,7 @@ export interface TimeBlock {
   endTime: number;   // Minutes from midnight
   taskId?: string;      // Link to a specific task
   label?: string;       // Custom label for busy blocks (e.g., "Gym")
+  color?: string;       // Custom color override (hex) — overrides category color
   isBusy?: boolean;     // If true, this block is fixed/busy
   date?: string;        // ISO string 'YYYY-MM-DD' for specific date (if not recurring)
 }

@@ -58,7 +58,7 @@ interface TodoContextType {
   updateUserNotes: (type: 'global' | 'category', content: string, categoryId?: string) => void;
 
   // TimeBlock methods
-  addTimeBlock: (categoryId: string, dayOfWeek: number, startTime: number, endTime: number, taskId?: string, label?: string, isBusy?: boolean, date?: string) => void;
+  addTimeBlock: (categoryId: string, dayOfWeek: number, startTime: number, endTime: number, taskId?: string, label?: string, isBusy?: boolean, date?: string, color?: string) => void;
   updateTimeBlock: (id: string, updates: Partial<TimeBlock>) => void;
   deleteTimeBlock: (id: string) => void;
 }
@@ -1403,7 +1403,7 @@ export const TodoProvider: React.FC<{ children: React.ReactNode }> = ({ children
     });
   };
 
-  const addTimeBlock = (categoryId: string, dayOfWeek: number, startTime: number, endTime: number, taskId?: string, label?: string, isBusy?: boolean, date?: string) => {
+  const addTimeBlock = (categoryId: string, dayOfWeek: number, startTime: number, endTime: number, taskId?: string, label?: string, isBusy?: boolean, date?: string, color?: string) => {
     const newBlock: TimeBlock = {
       id: generateId(),
       categoryId,
@@ -1414,6 +1414,7 @@ export const TodoProvider: React.FC<{ children: React.ReactNode }> = ({ children
       label,
       isBusy,
       date,
+      color,
     };
     setUserData(prev => ({
       ...prev,
