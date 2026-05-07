@@ -39,7 +39,7 @@
     "updater": {
       "active": true,
       "endpoints": [
-        "https://raw.githubusercontent.com/guzadev/espy_app/main/latest.json"
+        "https://github.com/guzadev/espy_app/releases/latest/download/latest.json"
       ],
       "dialog": false,
       "pubkey": "dW50cnVzdGVkIGNvbW1lbnQ6IG1pbmlzaWduIHB1YmxpYyBrZXk6IEQzNjQyQTg2NzI1NEM5NQpSV1NWVENWbnFFSTJEVFJ4anBvcUNRaXJSVjJGbHJ3WEJEdnFaUFhvc28rR0JrUWhJMUc0MEFveQo="
