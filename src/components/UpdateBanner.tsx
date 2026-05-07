@@ -11,7 +11,6 @@ export default function UpdateBanner() {
   const [showNotes, setShowNotes] = useState(false);
   const [installing, setInstalling] = useState(false);
   const [progress, setProgress] = useState(0);
-
   useEffect(() => {
     check()
       .then((u) => {
