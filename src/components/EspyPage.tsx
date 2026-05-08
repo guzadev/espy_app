@@ -100,12 +100,12 @@ interface EspyPageProps {
 }
 
 const FACES = [
-  { anim: 'startup', label: 'Startup',        desc: 'Startup animation' },
-  { anim: 'idle',    label: 'Idle',           desc: 'No active session' },
-  { anim: 'focus',   label: 'Focus',          desc: 'Pomodoro running' },
-  { anim: 'break',   label: 'Break',          desc: 'Rest time' },
-  { anim: 'love',    label: 'Love',           desc: 'Task completed' },
-  { anim: 'paused',  label: 'Angry / Paused', desc: 'Pomodoro paused' },
+  { anim: 'startup', label: 'Wakeup', desc: 'Starting up' },
+  { anim: 'idle',    label: 'Idle',   desc: 'Waiting' },
+  { anim: 'focus',   label: 'Focus',  desc: 'Working' },
+  { anim: 'break',   label: 'Break',  desc: 'Break time' },
+  { anim: 'love',    label: 'Love',   desc: 'Task done' },
+  { anim: 'paused',  label: 'Angry',  desc: 'Paused' },
 ];
 
 const EspyPage: React.FC<EspyPageProps> = ({ theme = 'clean' }) => {
@@ -261,28 +261,13 @@ const EspyPage: React.FC<EspyPageProps> = ({ theme = 'clean' }) => {
   // After 4 seconds, restores the correct animation based on current Pomodoro state
   const sendFaceTest = async (anim: string) => {
     if (!isConnected) return;
-    const post = (animation: string) =>
-      fetch(`http://${customIP}/api/animation`, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ animation, task: '' }),
-        signal: AbortSignal.timeout(3000),
-      }).catch(() => {});
-
-    await post(anim);
-
-    // Love and startup return to idle automatically from firmware.
-    // Looping animations show for 6s then return to the correct Pomodoro state.
-    if (anim !== 'love' && anim !== 'startup') {
-      setTimeout(() => {
-        sendAnimation(
-          activityState === 'focus'  ? 'focus'  :
-          activityState === 'break'  ? 'break'  :
-          activityState === 'paused' ? 'paused' :
-          'idle'
-        );
-      }, 6000);
-    }
+    // oneshot: true → el firmware reproduce la animacion completa y vuelve a idle solo
+    await fetch(`http://${customIP}/api/animation`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ animation: anim, task: '', oneshot: true }),
+      signal: AbortSignal.timeout(3000),
+    }).catch(() => {});
   };
 
   const formatUptime = (uptime: number) => {
